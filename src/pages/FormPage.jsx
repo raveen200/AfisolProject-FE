@@ -1,28 +1,30 @@
-import { useForm } from "react-hook-form";
-import { Table } from "flowbite-react";
+import {  useForm } from "react-hook-form";
+import { Button, Modal, Table } from "flowbite-react";
 import { addNewContacts, getAllContacts, deleteContacts, updateContacts, getByIdContacts, getAllCountry } from "../service/ContactService";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { HiOutlineExclamationCircle } from "react-icons/hi";
+
 
 function FormPage() {
 
   const [countries, setCountries] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
+  const [openModal, setOpenModal] = useState(false);
 
 
 
-
+  const fetchData = useCallback(async () => {
+    const countriesData = await getAllCountry();
+    const contactsData = await getAllContacts();
+    setCountries(countriesData);
+    setContacts(contactsData);
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const countriesData = await getAllCountry();
-      const contactsData = await getAllContacts();
-      setCountries(countriesData);
-      setContacts(contactsData);
-    };
-
     fetchData();
-  }, []);
+  }, [fetchData]);
+
 
 
 
@@ -31,31 +33,33 @@ function FormPage() {
   });
 
   const newbtn = () => {
-    reset();
-    setSelectedContact(null);
+    setSelectedContact(null)
+    reset({
+      name: "",
+      address: "",
+      telephone: "",
+      mobile: "",
+      email: "",
+      country: "",
+    });
   }
 
-  const updatebtn = async () => {
-    if (selectedContact) {
-      const data = {
-        contactId: selectedContact.contactId,
-        name: selectedContact.name,
-        address: selectedContact.address,
-        tel: selectedContact.tel,
-        mobile: selectedContact.mobile,
-        email: selectedContact.email,
-        countryId: selectedContact.countryId,
-      };
-      await updateContacts(selectedContact.contactId, data);
-
-    }
-  }
 
   const deleteBtn = async () => {
+ 
     if (selectedContact) {
       await deleteContacts(selectedContact.contactId);
       setSelectedContact(null);
-
+      fetchData();
+      setOpenModal(false);
+      reset({
+        name: "",
+        address: "",
+        telephone: "",
+        mobile: "",
+        email: "",
+        country: "",
+      });
       
     }
   }
@@ -63,25 +67,57 @@ function FormPage() {
 
 
   const onSubmitContact = async (data) => {
+   
+
+    if (!data.contactId) {
     const contactData = {
       name: data.name,
       address: data.address,
       tel: data.telephone,
       mobile: data.mobile,
       email: data.email,
-      country: data.country,
+      countryId: Number(data.country),
     };
-
-    console.log(contactData);
-
     addNewContacts(contactData);
+    reset({
+      name: "",
+      address: "",
+      telephone: "",
+      mobile: "",
+      email: "",
+      country: "",
+    });
+  } else {
+    const contactData = {
+      contactId: selectedContact.contactId,
+      name: data.name,
+      address: data.address,
+      tel: data.telephone,
+      mobile: data.mobile,
+      email: data.email,
+      countryId: Number(data.country),
+    };
+    updateContacts( selectedContact.contactId,contactData);
+    reset({
+      name: "",
+      address: "",
+      telephone: "",
+      mobile: "",
+      email: "",
+      country: "",
+    });
+  }
+
+  fetchData();
   };
 
 
   const handleEdit = async (id) => {
     const updateContact = await getByIdContacts(id);
+    reset(updateContact);
     setSelectedContact(updateContact);
-    console.log(id);
+   
+
   }
 
   return (
@@ -97,7 +133,7 @@ function FormPage() {
                 {...register("name")}
                 type="text"
                 id="name"
-                defaultValue={selectedContact?.name || ''}
+                required 
                 className="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -109,7 +145,7 @@ function FormPage() {
                 {...register("telephone")}
                 type="text"
                 id="telephone"
-                defaultValue={selectedContact?.tel || ''}
+                
                 className="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
@@ -124,7 +160,7 @@ function FormPage() {
               <textarea
                 {...register("address")}
                 id="address"
-                defaultValue={selectedContact?.address || ''}
+             
                 rows="4"
                 className="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
               ></textarea>
@@ -137,7 +173,7 @@ function FormPage() {
                 <input
                   {...register("mobile")}
                   type="text"
-                  defaultValue={selectedContact?.mobile || ''}
+                  required 
                   id="mobile"
                   className="mb-4 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                 />
@@ -149,7 +185,7 @@ function FormPage() {
                 <input
                   {...register("email")}
                   type="text"
-                  defaultValue={selectedContact?.email || ''}
+                
                   id="email"
                   className="mb-4 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                 />
@@ -160,6 +196,7 @@ function FormPage() {
                 </label>
                 <select
                   id="country"
+                  required 
                   className="mb-4 w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
                   name="country" {...register("country")}
                 >
@@ -191,19 +228,39 @@ function FormPage() {
             Save
           </button>
           <button
-            type="button"
-            onClick={updatebtn}
+           type="submit"
             className="mb-2 me-2 rounded-lg bg-yellow-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           >
             Update
           </button>
           <button
             type="button"
-            onClick={deleteBtn}
+            onClick={()=> setOpenModal(true)}
             className="mb-2 me-2 rounded-lg bg-red-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           >
             Delete
           </button>
+          
+      <Modal show={openModal} size="md" onClose={() => setOpenModal(false)} popup>
+        <Modal.Header />
+        <Modal.Body>
+          <div className="text-center">
+            <HiOutlineExclamationCircle className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete this?
+            </h3>
+            <div className="flex justify-center gap-4">
+              <Button color="failure" onClick={deleteBtn}>
+                {"Yes, I'm sure"}
+              </Button>
+              <Button color="gray" onClick={() => setOpenModal(false)}>
+                No, cancel
+              </Button>
+            </div>
+          </div>
+        </Modal.Body>
+      </Modal>
+
         </div>
       </form>
 
